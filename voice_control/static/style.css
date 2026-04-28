@@ -1,0 +1,257 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: #0a0a0a;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.container {
+    max-width: 480px;
+    width: 100%;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+}
+
+header {
+    text-align: center;
+}
+
+header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: #ffffff;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: #888;
+    margin-top: 4px;
+}
+
+#status-bar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.status-indicator {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+}
+
+.status-indicator.connected {
+    color: #4caf50;
+    border-color: #4caf5044;
+}
+
+.status-indicator.disconnected {
+    color: #f44336;
+    border-color: #f4433644;
+}
+
+#push-to-talk-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0;
+}
+
+#ptt-btn {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 3px solid #333;
+    background: #1a1a1a;
+    color: #888;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+
+#ptt-btn:not(:disabled):hover {
+    border-color: #555;
+    color: #ccc;
+}
+
+#ptt-btn:not(:disabled):active,
+#ptt-btn.recording {
+    border-color: #f44336;
+    background: #2a0a0a;
+    color: #f44336;
+    transform: scale(1.05);
+    box-shadow: 0 0 30px rgba(244, 67, 54, 0.3);
+}
+
+#ptt-btn.recording #mic-icon path {
+    fill: #f44336;
+}
+
+#ptt-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+#ptt-label {
+    font-size: 13px;
+    color: #666;
+}
+
+#ptt-btn.recording ~ #ptt-label {
+    color: #f44336;
+    font-weight: 600;
+}
+
+#feedback-area {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 80px;
+}
+
+.feedback-card {
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.feedback-card.hidden {
+    display: none;
+}
+
+.feedback-label {
+    color: #666;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 70px;
+}
+
+#transcription-text {
+    color: #fff;
+}
+
+#command-matched {
+    border-color: #2196f322;
+}
+
+#matched-command {
+    color: #2196f3;
+    font-weight: 600;
+}
+
+#command-result.success {
+    border-color: #4caf5022;
+}
+
+#command-result.error {
+    border-color: #f4433622;
+}
+
+#result-icon {
+    font-size: 16px;
+}
+
+#result-message {
+    font-size: 13px;
+}
+
+.feedback-card.error {
+    border-color: #f4433644;
+    color: #f44336;
+}
+
+#commands-panel {
+    width: 100%;
+    margin-top: 8px;
+}
+
+#commands-panel summary {
+    cursor: pointer;
+    padding: 10px 14px;
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #888;
+    list-style: none;
+}
+
+#commands-panel summary::before {
+    content: "▸ ";
+}
+
+#commands-panel[open] summary::before {
+    content: "▾ ";
+}
+
+#commands-list {
+    margin-top: 4px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+}
+
+.cmd-item {
+    background: #141414;
+    border: 1px solid #1a1a1a;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+}
+
+.cmd-item .cmd-name {
+    color: #2196f3;
+    font-weight: 600;
+}
+
+.cmd-item .cmd-triggers {
+    color: #555;
+    font-size: 11px;
+    margin-top: 2px;
+}
+
+.cmd-item.movement {
+    border-color: #ff980022;
+}
+
+.cmd-item.movement .cmd-name {
+    color: #ff9800;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+#ptt-btn.recording {
+    animation: pulse 1.5s infinite;
+}

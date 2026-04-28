@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unitree Go2 — Voice Control</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Unitree Go2</h1>
+            <p class="subtitle">Voice Command Interface</p>
+        </header>
+
+        <div id="status-bar">
+            <span id="ws-status" class="status-indicator disconnected">Disconnected</span>
+            <span id="robot-status" class="status-indicator disconnected">Robot: —</span>
+            <span id="model-info" class="status-indicator">—</span>
+        </div>
+
+        <div id="push-to-talk-wrapper">
+            <button id="ptt-btn" disabled>
+                <svg id="mic-icon" viewBox="0 0 24 24" width="48" height="48">
+                    <path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z"/>
+                    <path fill="currentColor" d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                </svg>
+            </button>
+            <p id="ptt-label">Press &amp; hold to talk</p>
+        </div>
+
+        <div id="feedback-area">
+            <div id="transcription" class="feedback-card hidden">
+                <span class="feedback-label">Heard:</span>
+                <span id="transcription-text"></span>
+            </div>
+            <div id="command-matched" class="feedback-card hidden">
+                <span class="feedback-label">Command:</span>
+                <span id="matched-command"></span>
+            </div>
+            <div id="command-result" class="feedback-card hidden">
+                <span id="result-icon"></span>
+                <span id="result-message"></span>
+            </div>
+            <div id="error-message" class="feedback-card error hidden">
+                <span id="error-text"></span>
+            </div>
+        </div>
+
+        <details id="commands-panel">
+            <summary>Available Voice Commands</summary>
+            <div id="commands-list"></div>
+        </details>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>
