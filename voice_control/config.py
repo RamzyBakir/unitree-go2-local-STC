@@ -8,3 +8,8 @@ SERVER_HOST = os.environ.get("GO2_SERVER_HOST", "0.0.0.0")
 SERVER_PORT = int(os.environ.get("GO2_SERVER_PORT", "8000"))
 ROBOT_TIMEOUT = float(os.environ.get("GO2_ROBOT_TIMEOUT", "10.0"))
 MOCK_MODE = os.environ.get("GO2_MOCK_MODE", "false").lower() == "true"
+
+KEYBIND_KEY = os.environ.get("GO2_KEYBIND_KEY", "KEY_SPACE")
+AUDIO_SAMPLE_RATE = int(os.environ.get("GO2_AUDIO_SAMPLE_RATE", "16000"))
+AUDIO_CHANNELS = int(os.environ.get("GO2_AUDIO_CHANNELS", "1"))
+AUDIO_DTYPE = os.environ.get("GO2_AUDIO_DTYPE", "int16")

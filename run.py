@@ -12,7 +12,11 @@ logging.basicConfig(
 
 
 def main():
-    print(f"Starting Unitree Go2 Voice Control on http://{SERVER_HOST}:{SERVER_PORT}")
+    print(f"╔══════════════════════════════════════════════════════════════╗")
+    print(f"║     Unitree Go2 Voice Control                                ║")
+    print(f"║     Dashboard: http://{SERVER_HOST}:{SERVER_PORT:>5}                          ║")
+    print(f"╚══════════════════════════════════════════════════════════════╝")
+    print("")
     print("Press Ctrl+C to stop")
     uvicorn.run(app, host=SERVER_HOST, port=SERVER_PORT, log_level="info")
 

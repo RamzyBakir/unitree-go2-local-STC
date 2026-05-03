@@ -4,3 +4,6 @@ python-multipart
 faster-whisper
 cyclonedds==0.10.2
 numpy
+evdev
+sounddevice
+soundfile

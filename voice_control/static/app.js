@@ -1,9 +1,10 @@
 (function () {
-    const pttBtn = document.getElementById("ptt-btn");
-    const pttLabel = document.getElementById("ptt-label");
     const wsStatusEl = document.getElementById("ws-status");
     const robotStatusEl = document.getElementById("robot-status");
     const modelInfoEl = document.getElementById("model-info");
+    const stateCard = document.getElementById("state-card");
+    const stateIcon = document.getElementById("state-icon");
+    const stateText = document.getElementById("state-text");
     const transcriptionEl = document.getElementById("transcription");
     const transcriptionText = document.getElementById("transcription-text");
     const commandMatchedEl = document.getElementById("command-matched");
@@ -16,9 +17,13 @@
     const commandsList = document.getElementById("commands-list");
 
     let ws = null;
-    let mediaRecorder = null;
-    let audioChunks = [];
-    let isRecording = false;
+    let reconnectTimer = null;
+
+    function setState(status, icon, text) {
+        stateCard.className = "status-card " + status;
+        stateIcon.textContent = icon;
+        stateText.textContent = text;
+    }
 
     function hideAll() {
         [transcriptionEl, commandMatchedEl, commandResultEl, errorMessageEl].forEach(
@@ -27,7 +32,7 @@
     }
 
     function showTranscription(text) {
-        transcriptionText.textContent = text;
+        transcriptionText.textContent = text ? `"${text}"` : "";
         transcriptionEl.classList.remove("hidden");
     }
 
@@ -36,9 +41,9 @@
         commandMatchedEl.classList.remove("hidden");
     }
 
-    function showResult(success, msg) {
-        resultIcon.textContent = success ? "✓" : "✗";
-        resultMessage.textContent = msg;
+    function showResult(success, cmd, code) {
+        resultIcon.textContent = success ? "✅" : "❌";
+        resultMessage.textContent = success ? `${cmd} — OK` : `${cmd} — Error (code ${code})`;
         commandResultEl.classList.remove("hidden");
         commandResultEl.className = "feedback-card " + (success ? "success" : "error");
     }
@@ -49,20 +54,19 @@
     }
 
     function connect() {
+        if (reconnectTimer) clearTimeout(reconnectTimer);
         const proto = location.protocol === "https:" ? "wss:" : "ws:";
-        ws = new WebSocket(`${proto}//${location.host}/ws/audio`);
+        ws = new WebSocket(`${proto}//${location.host}/ws/status`);
 
         ws.onopen = () => {
             wsStatusEl.textContent = "Connected";
             wsStatusEl.className = "status-indicator connected";
-            pttBtn.disabled = false;
         };
 
         ws.onclose = () => {
             wsStatusEl.textContent = "Disconnected";
             wsStatusEl.className = "status-indicator disconnected";
-            pttBtn.disabled = true;
-            setTimeout(connect, 2000);
+            reconnectTimer = setTimeout(connect, 2000);
         };
 
         ws.onerror = () => {};
@@ -71,105 +75,41 @@
             const data = JSON.parse(event.data);
 
             switch (data.type) {
+                case "ready":
+                    setState("idle", "⏸️", "Standby — hold Spacebar to talk");
+                    break;
+                case "listening_started":
+                    setState("listening", "🔴", "Listening...");
+                    hideAll();
+                    break;
+                case "listening_stopped":
+                    setState("processing", "⏳", "Processing...");
+                    break;
                 case "transcription":
-                    if (data.text) showTranscription(data.text);
+                    showTranscription(data.text);
                     break;
                 case "command_matched":
                     showCommandMatched(data.command);
                     break;
                 case "command_result":
-                    showResult(
-                        data.success,
-                        data.success ? `${data.command} — OK` : `${data.command} — Error (code ${data.code})`
-                    );
+                    showResult(data.success, data.command, data.code);
+                    setState(data.success ? "success" : "error", data.success ? "✅" : "❌", data.success ? "Done" : "Failed");
                     break;
                 case "no_match":
                     showTranscription(data.text);
                     showError(data.message);
+                    setState("error", "⚠️", "No match");
                     break;
                 case "command_error":
                     showError(data.message);
+                    setState("error", "💥", "Error");
                     break;
                 case "error":
                     showError(data.message);
+                    setState("error", "💥", "Error");
                     break;
             }
         };
-    }
-
-    function getSupportedMimeType() {
-        const types = [
-            "audio/webm;codecs=opus",
-            "audio/webm",
-            "audio/ogg;codecs=opus",
-            "audio/mp4",
-        ];
-        for (const t of types) {
-            if (MediaRecorder.isTypeSupported(t)) return t;
-        }
-        return "";
-    }
-
-    async function startRecording() {
-        if (isRecording) return;
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const mimeType = getSupportedMimeType();
-            const options = mimeType ? { mimeType } : {};
-            mediaRecorder = new MediaRecorder(stream, options);
-            audioChunks = [];
-
-            mediaRecorder.ondataavailable = (e) => {
-                if (e.data.size > 0) audioChunks.push(e.data);
-            };
-
-            mediaRecorder.onstop = () => {
-                const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/webm" });
-                if (blob.size > 0 && ws && ws.readyState === WebSocket.OPEN) {
-                    blob.arrayBuffer().then((buf) => ws.send(buf));
-                }
-                stream.getTracks().forEach((t) => t.stop());
-            };
-
-            mediaRecorder.start();
-            isRecording = true;
-            pttBtn.classList.add("recording");
-            pttLabel.textContent = "Listening...";
-            hideAll();
-        } catch (err) {
-            showError("Microphone access denied");
-        }
-    }
-
-    function stopRecording() {
-        if (!isRecording || !mediaRecorder) return;
-        mediaRecorder.stop();
-        isRecording = false;
-        pttBtn.classList.remove("recording");
-        pttLabel.textContent = "Processing...";
-        pttBtn.disabled = true;
-    }
-
-    pttBtn.addEventListener("mousedown", startRecording);
-    pttBtn.addEventListener("mouseup", stopRecording);
-    pttBtn.addEventListener("mouseleave", () => {
-        if (isRecording) stopRecording();
-    });
-
-    pttBtn.addEventListener("touchstart", (e) => {
-        e.preventDefault();
-        startRecording();
-    });
-    pttBtn.addEventListener("touchend", (e) => {
-        e.preventDefault();
-        stopRecording();
-    });
-
-    function setPttEnabled(enabled) {
-        if (!isRecording) {
-            pttBtn.disabled = !enabled;
-            pttLabel.textContent = enabled ? "Press & hold to talk" : "Connecting...";
-        }
     }
 
     async function loadStatus() {
@@ -198,14 +138,8 @@
         } catch {}
     }
 
-    ws.addEventListener("message", function restoreBtn() {
-        if (!isRecording) {
-            pttBtn.disabled = false;
-            pttLabel.textContent = "Press & hold to talk";
-        }
-    });
-
     loadStatus();
     loadCommands();
     connect();
+    setState("idle", "⏸️", "Standby");
 })();

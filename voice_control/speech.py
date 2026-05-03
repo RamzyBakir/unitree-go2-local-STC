@@ -1,6 +1,6 @@
-import io
 import logging
 import tempfile
+
 from faster_whisper import WhisperModel
 from . import config
 
@@ -32,13 +32,20 @@ class SpeechEngine:
         with tempfile.NamedTemporaryFile(suffix=".webm", delete=True) as tmp:
             tmp.write(audio_bytes)
             tmp.flush()
-            segments, _ = self._model.transcribe(
-                tmp.name,
-                language="en",
-                beam_size=1,
-                vad_filter=True,
-            )
-            text = " ".join(seg.text.strip() for seg in segments).strip()
+            return self._transcribe_file(tmp.name)
 
+    def transcribe_file(self, filepath: str) -> str:
+        if self._model is None:
+            raise RuntimeError("Whisper model not loaded")
+        return self._transcribe_file(filepath)
+
+    def _transcribe_file(self, filepath: str) -> str:
+        segments, _ = self._model.transcribe(
+            filepath,
+            language="en",
+            beam_size=1,
+            vad_filter=True,
+        )
+        text = " ".join(seg.text.strip() for seg in segments).strip()
         logger.info("Transcribed: '%s'", text)
         return text
