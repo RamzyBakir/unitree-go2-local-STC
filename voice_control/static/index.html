@@ -2,56 +2,101 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unitree Go2 — Voice Control Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#dfe7f5">
+    <title>Go2 Control</title>
     <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Unitree Go2</h1>
-            <p class="subtitle">Voice Control Dashboard</p>
+    <div class="aurora">
+        <div class="blob b1"></div>
+        <div class="blob b2"></div>
+        <div class="blob b3"></div>
+    </div>
+
+    <div class="app">
+        <header class="topbar glass">
+            <div class="brand">
+                <span class="brand-dot"></span>
+                <span class="brand-name">Go2 Control</span>
+            </div>
+            <div class="status-pills">
+                <span id="ws-status"    class="pill">WS</span>
+                <span id="robot-status" class="pill">Robot</span>
+                <span id="mode-status"  class="pill">Mode</span>
+            </div>
+            <button id="logout-btn" class="icon-btn" title="Sign out" aria-label="Sign out">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+            </button>
         </header>
 
-        <div id="status-bar">
-            <span id="ws-status" class="status-indicator disconnected">Disconnected</span>
-            <span id="robot-status" class="status-indicator disconnected">Robot: —</span>
-            <span id="model-info" class="status-indicator">—</span>
-        </div>
+        <main class="main">
+            <section class="control-panel">
+                <div id="state-card" class="state glass idle">
+                    <span id="state-icon" class="state-dot"></span>
+                    <span id="state-text">Standby</span>
+                </div>
 
-        <div id="live-status">
-            <div id="state-card" class="status-card idle">
-                <span id="state-icon">⏸️</span>
-                <span id="state-text">Standby</span>
-            </div>
-        </div>
+                <button id="record-btn" class="record glass">
+                    <svg class="mic-icon" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="2" width="6" height="12" rx="3"/>
+                        <path d="M5 10v2a7 7 0 0 0 14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="22"/>
+                    </svg>
+                    <span class="record-label">Hold to Speak</span>
+                </button>
 
-        <div id="feedback-area">
-            <div id="transcription" class="feedback-card hidden">
-                <span class="feedback-label">Heard</span>
-                <span id="transcription-text" class="feedback-value"></span>
-            </div>
-            <div id="command-matched" class="feedback-card hidden">
-                <span class="feedback-label">Command</span>
-                <span id="matched-command" class="feedback-value"></span>
-            </div>
-            <div id="command-result" class="feedback-card hidden">
-                <span id="result-icon" class="feedback-value"></span>
-                <span id="result-message" class="feedback-value"></span>
-            </div>
-            <div id="error-message" class="feedback-card error hidden">
-                <span id="error-text" class="feedback-value"></span>
-            </div>
-        </div>
+                <form id="text-form" class="input-row glass">
+                    <input id="text-cmd" type="text" placeholder="Type a command…" autocomplete="off" autocapitalize="none" autocorrect="off">
+                    <button id="send-btn" type="submit" class="btn-icon" aria-label="Send">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                            <polyline points="12 5 19 12 12 19"/>
+                        </svg>
+                    </button>
+                </form>
 
-        <details id="commands-panel">
-            <summary>Available Voice Commands</summary>
-            <div id="commands-list"></div>
-        </details>
+                <div id="feedback" class="feedback glass">
+                    <div id="transcription" class="fb-row hidden">
+                        <span class="fb-label">Heard</span>
+                        <span id="transcription-text" class="fb-val"></span>
+                    </div>
+                    <div id="command-matched" class="fb-row hidden">
+                        <span class="fb-label">Command</span>
+                        <span id="matched-command" class="fb-val matched"></span>
+                    </div>
+                    <div id="command-result" class="fb-row hidden">
+                        <span class="fb-label">Result</span>
+                        <span id="result-message" class="fb-val"></span>
+                    </div>
+                    <div id="error-message" class="fb-row error hidden">
+                        <span class="fb-label">Error</span>
+                        <span id="error-text" class="fb-val"></span>
+                    </div>
+                    <div id="feedback-empty" class="fb-empty">No activity yet — try a command.</div>
+                </div>
 
-        <footer>
-            <p class="hint">Press & hold <strong>Spacebar</strong> on the robot to speak</p>
-        </footer>
+                <button id="cmd-toggle" class="cmd-toggle glass" type="button">
+                    <span>Browse commands</span>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                </button>
+            </section>
+
+            <aside id="cmd-panel" class="cmd-panel glass">
+                <div class="cmd-panel-header">
+                    <h2>Commands</h2>
+                    <input id="cmd-filter" type="search" placeholder="Filter…" autocomplete="off" autocapitalize="none">
+                </div>
+                <div id="commands-list" class="cmd-list"></div>
+            </aside>
+        </main>
+
+        <div id="cmd-sheet-backdrop" class="sheet-backdrop hidden"></div>
     </div>
 
     <script src="/app.js"></script>

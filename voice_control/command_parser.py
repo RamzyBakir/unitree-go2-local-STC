@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -56,7 +57,7 @@ COMMAND_MAP: list[dict] = [
         "name": "dance1",
         "display": "Dance 1",
         "method": "dance1",
-        "triggers": ["dance", "dance one", "first dance", "do a dance"],
+        "triggers": ["dance one", "first dance", "dance", "do a dance"],
     },
     {
         "name": "dance2",
@@ -68,7 +69,7 @@ COMMAND_MAP: list[dict] = [
         "name": "front_flip",
         "display": "Front Flip",
         "method": "front_flip",
-        "triggers": ["front flip", "flip", "do a flip"],
+        "triggers": ["front flip", "do a flip", "flip"],
     },
     {
         "name": "back_flip",
@@ -80,13 +81,13 @@ COMMAND_MAP: list[dict] = [
         "name": "left_flip",
         "display": "Left Flip",
         "method": "left_flip",
-        "triggers": ["left flip", "left flip"],
+        "triggers": ["left flip"],
     },
     {
         "name": "front_jump",
         "display": "Jump",
         "method": "front_jump",
-        "triggers": ["jump", "front jump", "leap"],
+        "triggers": ["front jump", "jump", "leap"],
     },
     {
         "name": "front_pounce",
@@ -99,6 +100,16 @@ COMMAND_MAP: list[dict] = [
         "display": "Handstand",
         "method": "hand_stand",
         "triggers": ["hand stand", "handstand", "stand on hands"],
+    },
+    {
+        "name": "walk_upright",
+        "display": "Walk Upright (2 Legs)",
+        "method": "walk_upright",
+        "triggers": [
+            "walk upright", "stand upright", "upright",
+            "two legs", "two feet", "on two feet", "on two legs",
+            "human stand", "stand like a human",
+        ],
     },
     {
         "name": "scrape",
@@ -122,13 +133,13 @@ COMMAND_MAP: list[dict] = [
         "name": "balance_stand",
         "display": "Balance Stand",
         "method": "balance_stand",
-        "triggers": ["balance", "balance stand"],
+        "triggers": ["balance stand", "balance"],
     },
     {
         "name": "recovery_stand",
         "display": "Recovery Stand",
         "method": "recovery_stand",
-        "triggers": ["recovery", "recover", "recovery stand"],
+        "triggers": ["recovery stand", "recovery", "recover"],
     },
     {
         "name": "stop",
@@ -140,34 +151,34 @@ COMMAND_MAP: list[dict] = [
         "name": "damp",
         "display": "Emergency Stop",
         "method": "damp",
-        "triggers": ["emergency", "emergency stop", "kill", "shutdown motors"],
+        "triggers": ["emergency stop", "emergency", "kill", "shutdown motors"],
     },
     {
         "name": "move_forward",
         "display": "Move Forward",
         "method": "move",
-        "triggers": ["go forward", "forward", "move forward", "walk forward"],
+        "triggers": ["go forward", "move forward", "walk forward", "forward"],
         "args": [0.3, 0.0, 0.0],
     },
     {
         "name": "move_backward",
         "display": "Move Backward",
         "method": "move",
-        "triggers": ["go back", "backward", "back", "move back", "walk back"],
+        "triggers": ["go back", "move back", "walk back", "backward", "back"],
         "args": [-0.3, 0.0, 0.0],
     },
     {
         "name": "turn_left",
         "display": "Turn Left",
         "method": "move",
-        "triggers": ["turn left", "left", "rotate left"],
+        "triggers": ["turn left", "rotate left", "left"],
         "args": [0.0, 0.0, 0.5],
     },
     {
         "name": "turn_right",
         "display": "Turn Right",
         "method": "move",
-        "triggers": ["turn right", "right", "rotate right"],
+        "triggers": ["turn right", "rotate right", "right"],
         "args": [0.0, 0.0, -0.5],
     },
     {
@@ -194,7 +205,7 @@ COMMAND_MAP: list[dict] = [
         "name": "trot_run",
         "display": "Trot Run",
         "method": "trot_run",
-        "triggers": ["trot", "run", "trot run", "jog"],
+        "triggers": ["trot run", "trot", "run", "jog"],
     },
     {
         "name": "static_walk",
@@ -221,28 +232,34 @@ _MOVE_COMMAND_NAMES = {
 
 
 def parse_command(text: str) -> ParsedCommand | None:
-    normalized = text.lower().strip()
+    normalized = re.sub(r"[^\w\s]", " ", text.lower()).strip()
     if not normalized:
         return None
 
+    candidates = []
     for cmd in COMMAND_MAP:
         for trigger in cmd["triggers"]:
-            if trigger in normalized:
-                args = cmd.get("args", [])
-                kwargs = cmd.get("kwargs", {})
-                logger.info(
-                    "Matched command '%s' via trigger '%s'", cmd["display"], trigger
-                )
-                return ParsedCommand(
-                    name=cmd["name"],
-                    display_name=cmd["display"],
-                    method=cmd["method"],
-                    args=args,
-                    kwargs=kwargs,
-                )
+            pattern = r"\b" + re.escape(trigger) + r"\b"
+            if re.search(pattern, normalized):
+                candidates.append((len(trigger), cmd, trigger))
+                break
 
-    logger.info("No command matched for: '%s'", normalized)
-    return None
+    if not candidates:
+        logger.info("No command matched for: '%s'", normalized)
+        return None
+
+    candidates.sort(key=lambda x: -x[0])
+    _, cmd, trigger = candidates[0]
+    args = cmd.get("args", [])
+    kwargs = cmd.get("kwargs", {})
+    logger.info("Matched command '%s' via trigger '%s'", cmd["display"], trigger)
+    return ParsedCommand(
+        name=cmd["name"],
+        display_name=cmd["display"],
+        method=cmd["method"],
+        args=args,
+        kwargs=kwargs,
+    )
 
 
 def get_all_commands() -> list[dict]:

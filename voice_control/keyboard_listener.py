@@ -22,11 +22,12 @@ class KeyboardListener:
         self._thread: threading.Thread | None = None
         self._queue: asyncio.Queue = asyncio.Queue()
         self._running = False
+        self._web_trigger = False
 
         if _EVDEV_AVAILABLE:
             self.key_code = getattr(ecodes, key_name, None)
             if self.key_code is None:
-                raise ValueError(f"Unknown key: {key_name}")
+                logger.warning(f"Unknown key: {key_name}, keyboard input will be disabled")
 
     def find_keyboard(self):
         if not _EVDEV_AVAILABLE:
@@ -45,16 +46,17 @@ class KeyboardListener:
     def start(self) -> bool:
         self.device = self.find_keyboard()
         if self.device is None:
-            logger.error(
-                "No keyboard found. "
-                "Make sure a USB keyboard is plugged in and you have read access to /dev/input/event* "
-                "(try: sudo usermod -aG input $USER && newgrp input)"
-            )
-            return False
+            if _EVDEV_AVAILABLE:
+                logger.warning(
+                    "No keyboard found or no permission. "
+                    "Web-based trigger will be available."
+                )
+            # Don't return False - allow web trigger to work
         self._running = True
-        loop = asyncio.get_running_loop()
-        self._thread = threading.Thread(target=self._thread_loop, args=(loop,), daemon=True)
-        self._thread.start()
+        if self.device is not None:
+            loop = asyncio.get_running_loop()
+            self._thread = threading.Thread(target=self._thread_loop, args=(loop,), daemon=True)
+            self._thread.start()
         return True
 
     def _thread_loop(self, loop):
@@ -75,6 +77,14 @@ class KeyboardListener:
             except Exception as e:
                 logger.error("Keyboard read error: %s", e)
                 time.sleep(0.5)
+
+    def trigger_press(self):
+        """Web-based trigger for press event"""
+        asyncio.ensure_future(self._queue.put(("press", None)))
+
+    def trigger_release(self):
+        """Web-based trigger for release event"""
+        asyncio.ensure_future(self._queue.put(("release", None)))
 
     async def get_event(self):
         return await self._queue.get()
