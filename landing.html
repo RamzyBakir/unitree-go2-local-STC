@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Go2 Voice Control</title>
+<style>
+/* ============================================================
+   Go2 Voice Control — Landing Page
+   Apple-style. Liquid glass. One file.
+   ============================================================ */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --text:        #0b0d12;
+    --text-soft:   #4a4f5c;
+    --text-mute:   #8a92a3;
+    --accent:      #2f6bff;
+    --accent-soft: #dde7ff;
+    --success:     #1aa356;
+    --glass-bg:        rgba(255,255,255,0.50);
+    --glass-bg-strong: rgba(255,255,255,0.80);
+    --glass-border:    rgba(255,255,255,0.85);
+    --glass-stroke:    rgba(20,25,40,0.07);
+    --glass-shadow:    0 8px 30px rgba(20,30,60,0.08);
+    --glass-radius:    22px;
+    --bg-base: #e9eef9;
+}
+
+html {
+    scroll-behavior: smooth;
+    font-size: 16px;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--text);
+    background: var(--bg-base);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+}
+
+/* ---------- Animated aurora background ---------- */
+.aurora {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+.aurora .blob {
+    position: absolute;
+    width: 70vmax;
+    height: 70vmax;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: .50;
+    will-change: transform;
+}
+.aurora .b1 { background: #b9c8ff; top: -25vmax; left: -25vmax; animation: drift1 24s ease-in-out infinite alternate; }
+.aurora .b2 { background: #ffd4ec; bottom: -30vmax; right: -20vmax; animation: drift2 28s ease-in-out infinite alternate; }
+.aurora .b3 { background: #c5f0e0; top: 35%; left: 30%; opacity: .30; animation: drift3 32s ease-in-out infinite alternate; }
+
+@keyframes drift1 { to { transform: translate(10vmax, 8vmax) scale(1.2); } }
+@keyframes drift2 { to { transform: translate(-8vmax, -10vmax) scale(1.15); } }
+@keyframes drift3 { to { transform: translate(-12vmax, 6vmax) scale(.8); } }
+
+/* ---------- Glass primitive ---------- */
+.glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid var(--glass-stroke);
+    border-radius: var(--glass-radius);
+    box-shadow: var(--glass-shadow);
+}
+.glass-strong {
+    background: var(--glass-bg-strong);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+}
+
+/* ---------- Typography ---------- */
+h1, h2, h3, h4 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+
+.display {
+    font-size: clamp(3rem, 8vw, 7rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1.0;
+}
+
+.headline {
+    font-size: clamp(2rem, 5vw, 4rem);
+    font-weight: 700;
+}
+
+.subhead {
+    font-size: clamp(1.1rem, 2vw, 1.5rem);
+    color: var(--text-soft);
+    font-weight: 400;
+    line-height: 1.5;
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 1rem;
+    display: inline-block;
+}
+
+/* ---------- Layout ---------- */
+.page {
+    position: relative;
+    z-index: 1;
+}
+
+.section {
+    width: 100%;
+    padding: 120px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.section-narrow { max-width: 980px; margin: 0 auto; }
+
+/* ---------- Nav ---------- */
+.nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    padding: 16px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background .3s, box-shadow .3s;
+}
+.nav.scrolled {
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.05);
+}
+.nav-brand {
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: -0.01em;
+}
+.nav-links { display: flex; gap: 28px; }
+.nav-links a {
+    text-decoration: none;
+    color: var(--text-soft);
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: color .2s;
+}
+.nav-links a:hover { color: var(--text); }
+
+/* ---------- Hero ---------- */
+.hero {
+    min-height: 100vh;
+    justify-content: center;
+    padding-top: 80px;
+}
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-soft);
+    margin-bottom: 32px;
+    background: rgba(255,255,255,0.6);
+    border: 1px solid rgba(0,0,0,0.06);
+}
+.hero-badge::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 0 3px rgba(26,163,86,0.2);
+}
+
+.hero-ctas {
+    margin-top: 40px;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    border-radius: 100px;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: transform .2s, box-shadow .2s, background .2s;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn-primary {
+    background: var(--text);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+.btn-primary:hover { background: #1a1d24; }
+.btn-secondary {
+    background: rgba(255,255,255,0.6);
+    color: var(--text);
+    border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.9); }
+
+/* Hero mockup */
+.hero-mockup {
+    margin-top: 64px;
+    width: 100%;
+    max-width: 1100px;
+    perspective: 1200px;
+}
+.mockup-frame {
+    width: 100%;
+    padding: 12px;
+    background: rgba(255,255,255,0.45);
+    backdrop-filter: blur(20px) saturate(150%);
+    border: 1px solid rgba(255,255,255,0.7);
+    border-radius: 28px;
+    box-shadow:
+        0 24px 80px rgba(20,30,60,0.12),
+        0 0 0 1px rgba(0,0,0,0.04) inset;
+    transform: rotateX(8deg) translateY(0);
+    transition: transform .8s cubic-bezier(0.16,1,0.3,1);
+    overflow: hidden;
+}
+.mockup-frame:hover {
+    transform: rotateX(0deg) translateY(-8px);
+}
+.mockup-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+}
+.mockup-dot { width: 10px; height: 10px; border-radius: 50%; }
+.mockup-dot.r { background: #ff5f56; }
+.mockup-dot.y { background: #ffbd2e; }
+.mockup-dot.g { background: #27c93f; }
+.mockup-body {
+    background: #f5f7fb;
+    border-radius: 18px;
+    padding: 32px;
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+    text-align: left;
+}
+@media (max-width: 900px) {
+    .mockup-body { grid-template-columns: 1fr; }
+    .mockup-frame { transform: none !important; }
+}
+
+.mock-left { display: flex; flex-direction: column; gap: 16px; }
+.mock-card {
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.8);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 2px 12px rgba(20,30,60,0.05);
+}
+.mock-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.5);
+    margin-bottom: 8px;
+}
+.mock-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
+.mock-row span { font-size: 0.85rem; color: var(--text-soft); }
+.mock-mic {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #e8eeff, #ffe8f3);
+    border: 1px solid rgba(255,255,255,0.8);
+    box-shadow: 0 4px 20px rgba(47,107,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 16px auto;
+}
+.mock-mic svg { width: 28px; height: 28px; stroke: var(--accent); stroke-width: 1.8; fill: none; }
+.mock-input {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.8);
+    border: 1px solid rgba(0,0,0,0.05);
+}
+.mock-input span { color: var(--text-mute); font-size: 0.9rem; }
+
+.mock-right {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.mock-history {
+    background: rgba(255,255,255,0.6);
+    border-radius: 16px;
+    padding: 16px;
+    flex: 1;
+}
+.mock-history h4 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-mute); margin-bottom: 12px; }
+.mock-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.5);
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+}
+.mock-item .cmd { font-weight: 500; color: var(--text); }
+.mock-item .tag { font-size: 0.7rem; padding: 2px 8px; border-radius: 100px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+/* ---------- Scroll reveal ---------- */
+.reveal {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity .8s cubic-bezier(0.16,1,0.3,1), transform .8s cubic-bezier(0.16,1,0.3,1);
+}
+.reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ---------- Bento grid ---------- */
+.bento {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    width: 100%;
+    max-width: 900px;
+    margin-top: 48px;
+}
+@media (max-width: 900px) { .bento { grid-template-columns: 1fr; } }
+
+.bento-card {
+    padding: 36px 28px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    transition: transform .3s, box-shadow .3s;
+}
+.bento-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(20,30,60,0.10); }
+.bento-card.wide { grid-column: span 2; }
+@media (max-width: 900px) { .bento-card.wide { grid-column: span 1; } }
+
+.bento-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #eef1ff, #ffeef5);
+    border: 1px solid rgba(255,255,255,0.7);
+    box-shadow: 0 2px 8px rgba(47,107,255,0.08);
+}
+.bento-icon svg { width: 22px; height: 22px; stroke: var(--accent); stroke-width: 1.8; fill: none; }
+.bento-card h3 { font-size: 1.3rem; }
+.bento-card p { font-size: 0.95rem; color: var(--text-soft); line-height: 1.55; }
+
+/* ---------- Commands list ---------- */
+.commands-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+    width: 100%;
+    max-width: 900px;
+    margin-top: 40px;
+}
+.cmd-chip {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.7);
+    border-radius: 14px;
+    box-shadow: 0 2px 10px rgba(20,30,60,0.04);
+    text-align: left;
+    transition: transform .2s, background .2s;
+}
+.cmd-chip:hover { transform: scale(1.02); background: rgba(255,255,255,0.8); }
+.cmd-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.cmd-chip strong { font-size: 0.95rem; font-weight: 600; }
+.cmd-chip span { font-size: 0.8rem; color: var(--text-mute); margin-left: auto; }
+
+/* ---------- Terminal ---------- */
+.terminal {
+    width: 100%;
+    max-width: 720px;
+    margin-top: 40px;
+    text-align: left;
+    overflow: hidden;
+    background: rgba(10,12,18,0.85);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: var(--glass-radius);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+}
+.term-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 18px;
+    background: rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.term-body { padding: 20px 24px; font-family: "SF Mono", SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85rem; line-height: 1.7; color: #c8cdd8; }
+.term-body .comment { color: #6b7280; }
+.term-body .prompt { color: #7dd3fc; }
+.term-body .cmd { color: #e2e8f0; }
+.term-body .output { color: #86efac; }
+
+/* ---------- Tech row ---------- */
+.tech-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 32px;
+}
+.tech-pill {
+    padding: 8px 18px;
+    border-radius: 100px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    background: rgba(255,255,255,0.5);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.7);
+    color: var(--text-soft);
+    transition: transform .2s, background .2s;
+}
+.tech-pill:hover { transform: translateY(-2px); background: rgba(255,255,255,0.85); color: var(--text); }
+
+/* ---------- Footer ---------- */
+.footer {
+    padding: 60px 24px 40px;
+    text-align: center;
+    color: var(--text-mute);
+    font-size: 0.85rem;
+}
+.footer a { color: var(--text-soft); text-decoration: none; }
+.footer a:hover { color: var(--text); text-decoration: underline; }
+
+/* ---------- Divider ---------- */
+.divider {
+    width: 60px;
+    height: 1px;
+    background: rgba(0,0,0,0.08);
+    margin: 0 auto;
+}
+
+/* ---------- Flowchart ---------- */
+.flowchart {
+    width: 100%;
+    max-width: 1000px;
+    margin-top: 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    padding: 20px;
+}
+
+.flow-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+    position: relative;
+}
+@media (max-width: 900px) {
+    .flow-row { flex-direction: column; gap: 12px; }
+}
+
+.flow-node {
+    padding: 18px 28px;
+    text-align: center;
+    transition: transform .3s, box-shadow .3s;
+    min-width: 160px;
+}
+.flow-node:hover { transform: translateY(-3px); }
+
+.flow-node h4 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+    margin-bottom: 4px;
+}
+.flow-node p {
+    font-size: 0.75rem;
+    color: var(--text-mute);
+    line-height: 1.4;
+    font-family: "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.flow-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-mute);
+    min-width: 48px;
+}
+.flow-arrow svg {
+    width: 28px;
+    height: 28px;
+    stroke: var(--text-mute);
+    stroke-width: 1.5;
+    fill: none;
+    opacity: 0.4;
+}
+.flow-arrow-label {
+    font-size: 0.7rem;
+    color: var(--text-mute);
+    text-align: center;
+    padding: 4px 0;
+    font-family: "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    opacity: 0.6;
+}
+
+.flow-hub {
+    padding: 22px 40px;
+    min-width: 200px;
+}
+.flow-hub h4 { font-size: 1rem; font-weight: 700; }
+
+.flow-pipeline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+@media (max-width: 900px) {
+    .flow-pipeline { flex-direction: column; }
+}
+
+.flow-connector {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 0;
+}
+.flow-connector svg {
+    width: 24px;
+    height: 24px;
+    stroke: var(--text-mute);
+    stroke-width: 1.5;
+    fill: none;
+    opacity: 0.3;
+}
+
+/* ---------- Animations ---------- */
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
+}
+.float { animation: float 6s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<!-- Aurora background -->
+<div class="aurora">
+    <div class="blob b1"></div>
+    <div class="blob b2"></div>
+    <div class="blob b3"></div>
+</div>
+
+<!-- Nav -->
+<nav class="nav" id="nav">
+    <div class="nav-brand">Go2 Voice Control</div>
+    <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#commands">Commands</a>
+        <a href="#start">Get Started</a>
+    </div>
+</nav>
+
+<div class="page">
+
+<!-- ==================== HERO ==================== -->
+<section class="section hero" id="hero">
+    <div class="hero-badge reveal">Live on localhost:8000</div>
+    <h1 class="display reveal" style="transition-delay:.05s">Speak to your robot.</h1>
+    <p class="subhead reveal" style="transition-delay:.15s; margin-top:24px">
+        A web-based voice &amp; text control dashboard for the Unitree Go2.
+        Natural language commands, real-time feedback, zero-latency WebSocket connection.
+    </p>
+    <div class="hero-ctas reveal" style="transition-delay:.25s">
+        <a href="#start" class="btn btn-primary">Get Started</a>
+        <a href="https://github.com/RamzyBakir/unitree-go2-local-STC" target="_blank" class="btn btn-secondary">View on GitHub</a>
+    </div>
+
+    <!-- Dashboard mockup -->
+    <div class="hero-mockup reveal" style="transition-delay:.35s">
+        <div class="mockup-frame">
+            <div class="mockup-header">
+                <div class="mockup-dot r"></div>
+                <div class="mockup-dot y"></div>
+                <div class="mockup-dot g"></div>
+            </div>
+            <div class="mockup-body">
+                <div class="mock-left">
+                    <div style="display:flex;gap:8px;margin-bottom:4px">
+                        <span class="mock-row"><span class="mock-dot"></span><span>WS Connected</span></span>
+                        <span class="mock-row"><span class="mock-dot"></span><span>Robot Online</span></span>
+                        <span class="mock-row"><span class="mock-dot" style="background:var(--warn)"></span><span>Standby</span></span>
+                    </div>
+                    <div class="mock-card" style="text-align:center">
+                        <div class="mock-mic">
+                            <svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+                        </div>
+                        <div style="font-size:0.8rem;color:var(--text-mute)">Hold to Speak</div>
+                    </div>
+                    <div class="mock-input"><span>Type a command…</span></div>
+                </div>
+                <div class="mock-right">
+                    <div class="mock-history">
+                        <h4>History</h4>
+                        <div class="mock-item"><span class="cmd">Stand up</span><span class="tag">Success</span></div>
+                        <div class="mock-item"><span class="cmd">Walk forward</span><span class="tag">Success</span></div>
+                        <div class="mock-item"><span class="cmd">Dance</span><span class="tag">Success</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== FEATURES ==================== -->
+<section class="section" id="features">
+    <div class="section-narrow">
+        <span class="label reveal">Features</span>
+        <h2 class="headline reveal" style="transition-delay:.05s">Everything you need,<br>in one dashboard.</h2>
+        <p class="subhead reveal" style="transition-delay:.1s; margin-top:16px">
+            From voice recognition to keyboard shortcuts. Built for developers, designed for humans.
+        </p>
+    </div>
+
+    <div class="bento">
+        <div class="bento-card glass reveal" style="transition-delay:.1s">
+            <div class="bento-icon">
+                <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </div>
+            <h3>Voice Commands</h3>
+            <p>Powered by OpenAI Whisper via <code>faster-whisper</code>. Local inference, zero cloud dependency. Speak naturally — "stand up", "walk forward", "do a dance" — and watch your robot respond instantly.</p>
+        </div>
+
+        <div class="bento-card glass reveal" style="transition-delay:.15s">
+            <div class="bento-icon">
+                <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <h3>Real-Time Status</h3>
+            <p>WebSocket-powered live feedback. Connection health, robot state, command queue — all in one glance.</p>
+        </div>
+
+        <div class="bento-card glass reveal" style="transition-delay:.2s">
+            <div class="bento-icon">
+                <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <h3>Session Auth</h3>
+            <p>Optional login with HMAC-signed session cookies. Share the dashboard on your lab network with confidence.</p>
+        </div>
+
+        <div class="bento-card glass reveal" style="transition-delay:.25s">
+            <div class="bento-icon">
+                <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            </div>
+            <h3>Mock Mode</h3>
+            <p>Test the entire stack without a physical robot. Perfect for UI development, demos, and CI pipelines.</p>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== OVERVIEW ==================== -->
+<section class="section" id="overview">
+    <div class="section-narrow">
+        <span class="label reveal">Overview</span>
+        <h2 class="headline reveal" style="transition-delay:.05s">Fully local.<br>No cloud required.</h2>
+        <p class="subhead reveal" style="transition-delay:.1s; margin-top:24px">
+            A <strong>fully local, self-hosted</strong> voice control system for the Unitree Go2. It runs an embedded Whisper STT model, matches spoken words to a predefined command table, and sends control signals to the robot over <strong>DDS (CycloneDDS)</strong> — no internet required after setup.
+        </p>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ==================== COMMANDS ==================== -->
+<section class="section" id="commands">
+    <div class="section-narrow">
+        <span class="label reveal">Commands</span>
+        <h2 class="headline reveal" style="transition-delay:.05s">Natural language,<br>real motion.</h2>
+        <p class="subhead reveal" style="transition-delay:.1s; margin-top:16px">
+            ~30 built-in motions mapped to natural speech. The parser handles synonyms, filler words, and partial matches.
+        </p>
+    </div>
+
+    <div class="commands-grid">
+        <div class="cmd-chip glass reveal"><div class="dot"></div><strong>Stand Up</strong><span>"get up"</span></div>
+        <div class="cmd-chip glass reveal" style="transition-delay:.03s"><div class="dot"></div><strong>Sit Down</strong><span>"take a seat"</span></div>
+        <div class="cmd-chip glass reveal" style="transition-delay:.06s"><div class="dot"></div><strong>Stretch</strong><span>"reach out"</span></div>
+        <div class="cmd-chip glass reveal" style="transition-delay:.09s"><div class="dot"></div><strong>Hello</strong><span>"wave"</span></div>
+        <div class="cmd-chip glass reveal" style="transition-delay:.12s"><div class="dot"></div><strong>Heart</strong><span>"i love you"</span></div>
+        <div class="cmd-chip glass reveal" style="transition-delay:.15s"><div class="dot"></div><strong>Dance 1 / 2</strong><span>"do a dance"</span></div>
+        <div class="cmd-chip glass reveal" style="transition-delay:.18s"><div class="dot"></div><strong>Walk Forward</strong><span>"go ahead"</span></div>
+        <div class="cmd-chip glass reveal" style="transition-delay:.21s"><div class="dot"></div><strong>Walk Backward</strong><span>"step back"</span></div>
+        <div class="cmd-chip glass reveal" style="transition-delay:.24s"><div class="dot"></div><strong>Turn Left / Right</strong><span>"spin right"</span></div>
+        <div class="cmd-chip glass reveal" style="transition-delay:.27s"><div class="dot"></div><strong>Move Left / Right</strong><span>"strafe left"</span></div>
+        <div class="cmd-chip glass reveal" style="transition-delay:.30s"><div class="dot"></div><strong>Stop</strong><span>"halt"</span></div>
+        <div class="cmd-chip glass reveal" style="transition-delay:.33s"><div class="dot"></div><strong>Balance Stand</strong><span>"balance"</span></div>
+        <div class="cmd-chip glass reveal" style="transition-delay:.36s"><div class="dot"></div><strong>Recovery Stand</strong><span>"get up"</span></div>
+        <div class="cmd-chip glass reveal" style="transition-delay:.39s"><div class="dot"></div><strong>Squat</strong><span>"crouch"</span></div>
+        <div class="cmd-chip glass reveal" style="transition-delay:.42s"><div class="dot"></div><strong>Jump</strong><span>"hop"</span></div>
+        <div class="cmd-chip glass reveal" style="transition-delay:.45s"><div class="dot"></div><strong>Skateboard</strong><span>"skate"</span></div>
+        <div class="cmd-chip glass reveal" style="transition-delay:.48s"><div class="dot"></div><strong>Fingertip Stand</strong><span>"fingertip"</span></div>
+        <div class="cmd-chip glass reveal" style="transition-delay:.51s"><div class="dot"></div><strong>One-Legged Stand</strong><span>"one leg"</span></div>
+        <div class="cmd-chip glass reveal" style="transition-delay:.54s"><div class="dot"></div><strong>Handstand</strong><span>"handstand"</span></div>
+        <div class="cmd-chip glass reveal" style="transition-delay:.57s"><div class="dot"></div><strong>Wiggle Hips</strong><span>"wiggle"</span></div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ==================== ARCHITECTURE ==================== -->
+<section class="section" id="architecture">
+    <div class="section-narrow">
+        <span class="label reveal">Architecture</span>
+        <h2 class="headline reveal" style="transition-delay:.05s">Built for speed.<br>Designed for clarity.</h2>
+        <p class="subhead reveal" style="transition-delay:.1s; margin-top:16px">
+            FastAPI backend, WebSocket real-time layer, faster-whisper for local STT, and DDS for direct robot control.
+        </p>
+    </div>
+
+    <div class="tech-row reveal" style="transition-delay:.15s">
+        <span class="tech-pill">FastAPI</span>
+        <span class="tech-pill">WebSocket</span>
+        <span class="tech-pill">faster-whisper</span>
+        <span class="tech-pill">CycloneDDS</span>
+        <span class="tech-pill">SportClient</span>
+        <span class="tech-pill">sounddevice</span>
+        <span class="tech-pill">evdev</span>
+        <span class="tech-pill">python-dotenv</span>
+    </div>
+
+    <div class="terminal reveal" style="transition-delay:.2s; margin-top:48px">
+        <div class="term-header">
+            <div class="mockup-dot r"></div>
+            <div class="mockup-dot y"></div>
+            <div class="mockup-dot g"></div>
+        </div>
+        <div class="term-body">
+<span class="prompt">$</span> <span class="cmd">python3 run.py</span><br><br>
+<span class="output">╔══════════════════════════════════════════════════════════════╗</span><br>
+<span class="output">║     Unitree Go2 Voice Control                                ║</span><br>
+<span class="output">║     Dashboard: http://0.0.0.0:8000                           ║</span><br>
+<span class="output">║     Auth: ON                                                 ║</span><br>
+<span class="output">║     TLS: OFF (no cert)                                       ║</span><br>
+<span class="output">╚══════════════════════════════════════════════════════════════╝</span><br><br>
+<span class="comment"># WebSocket connected  →  faster-whisper STT  →  Command Parser  →  DDS SportClient</span>
+        </div>
+    </div>
+
+    <div class="flowchart reveal" style="transition-delay:.25s">
+
+        <!-- Row 1: Inputs -->
+        <div class="flow-row">
+            <div class="flow-node flow-input glass">
+                <h4>Microphone</h4>
+                <p>Browser / hardware audio</p>
+            </div>
+            <div class="flow-arrow">
+                <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </div>
+            <div class="flow-node flow-input glass">
+                <h4>Web Browser</h4>
+                <p>WebSocket + HTTP UI</p>
+            </div>
+        </div>
+
+        <!-- Connector down -->
+        <div class="flow-connector">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="5 12 12 19 19 12"/></svg>
+            <span class="flow-arrow-label">POST /api/transcribe</span>
+        </div>
+
+        <!-- Row 2: Hub -->
+        <div class="flow-row">
+            <div class="flow-node flow-hub glass-strong">
+                <h4>FastAPI Server</h4>
+                <p>uvicorn · WebSocket · REST</p>
+            </div>
+        </div>
+
+        <!-- Connector down -->
+        <div class="flow-connector">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="5 12 12 19 19 12"/></svg>
+        </div>
+
+        <!-- Row 3: Processing Pipeline -->
+        <div class="flow-pipeline">
+            <div class="flow-node flow-pipe glass">
+                <h4>AudioRecorder</h4>
+                <p>sounddevice</p>
+            </div>
+            <div class="flow-arrow">
+                <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </div>
+            <div class="flow-node flow-pipe glass">
+                <h4>SpeechEngine</h4>
+                <p>faster-whisper</p>
+            </div>
+            <div class="flow-arrow">
+                <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </div>
+            <div class="flow-node flow-pipe glass">
+                <h4>CommandParser</h4>
+                <p>regex matching</p>
+            </div>
+            <div class="flow-arrow">
+                <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </div>
+            <div class="flow-node flow-pipe glass">
+                <h4>RobotController</h4>
+                <p>unitree_sdk2py · DDS</p>
+            </div>
+            <div class="flow-arrow">
+                <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </div>
+            <div class="flow-node flow-output glass">
+                <h4>Unitree Go2</h4>
+                <p>Robot execution</p>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ==================== GET STARTED ==================== -->
+<section class="section" id="start">
+    <div class="section-narrow">
+        <span class="label reveal">Get Started</span>
+        <h2 class="headline reveal" style="transition-delay:.05s">One command away<br>from voice control.</h2>
+        <p class="subhead reveal" style="transition-delay:.1s; margin-top:16px">
+            Clone, install, configure, run. The dashboard starts in seconds.
+        </p>
+    </div>
+
+    <div class="terminal reveal" style="transition-delay:.15s; margin-top:40px">
+        <div class="term-header">
+            <div class="mockup-dot r"></div>
+            <div class="mockup-dot y"></div>
+            <div class="mockup-dot g"></div>
+        </div>
+        <div class="term-body">
+<span class="comment"># 1. Clone the fork</span><br>
+<span class="prompt">$</span> <span class="cmd">git clone https://github.com/RamzyBakir/unitree-go2-local-STC.git</span><br>
+<span class="prompt">$</span> <span class="cmd">cd unitree-go2-voice-control</span><br><br>
+
+<span class="comment"># 2. Install base SDK + voice deps</span><br>
+<span class="prompt">$</span> <span class="cmd">pip3 install -e .</span><br>
+<span class="prompt">$</span> <span class="cmd">pip3 install -r voice_control/requirements.txt</span><br><br>
+
+<span class="comment"># 3. Configure .env</span><br>
+<span class="prompt">$</span> <span class="cmd">cp .env.example .env</span><br>
+<span class="prompt">$</span> <span class="cmd">nano .env</span> <span class="comment"># Set GO2_NETWORK_INTERFACE, GO2_AUTH_PASSWORD, etc.</span><br><br>
+
+<span class="comment"># 4. Launch</span><br>
+<span class="prompt">$</span> <span class="cmd">python3 run.py</span><br><br>
+
+<span class="comment"># Open http://localhost:8000 in your browser</span>
+        </div>
+    </div>
+
+    <div class="hero-ctas reveal" style="transition-delay:.25s; margin-top:48px">
+        <a href="https://github.com/RamzyBakir/unitree-go2-local-STC" target="_blank" class="btn btn-primary">View on GitHub</a>
+    </div>
+</section>
+
+<!-- ==================== FOOTER ==================== -->
+<footer class="footer glass" style="border-radius:0; border-left:none; border-right:none; border-bottom:none;">
+    <p>Built on top of <a href="https://github.com/unitreerobotics/unitree_sdk2_python" target="_blank">unitree_sdk2_python</a></p>
+</footer>
+
+</div><!-- /page -->
+
+<script>
+/* ---------- Nav scroll effect ---------- */
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 40);
+});
+
+/* ---------- Intersection Observer reveal ---------- */
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+        }
+    });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>
