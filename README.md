@@ -1,113 +1,194 @@
-# unitree_sdk2_python
-Python interface for unitree sdk2
+# Unitree Go2 — Voice Control Dashboard
 
-# Installation
+A **web-based voice & text control interface** for the Unitree Go2 robot, built on top of [`unitree_sdk2_python`](https://github.com/unitreerobotics/unitree_sdk2_python).
+
+![dashboard](voice_control/static/screenshot.png)
+
+## Features
+- **Voice commands** — natural speech recognition via OpenAI Whisper (`faster-whisper`)
+- **Text commands** — type commands directly in the web UI
+- **Hold-to-speak** — press and hold the microphone button (or `Space` key) to record
+- **Real-time dashboard** — WebSocket-powered status, command history, and robot state
+- **~30 built-in motions** — stand, sit, dance, walk, jump, stretch, and more
+- **Optional login** — session-based auth with configurable username / password
+- **TLS support** — serve over HTTPS with custom certificates
+- **Mock mode** — test the full UI without a physical robot connected
+
+---
+
+## Quick Start
+
+### 1. Prerequisites
+- Python ≥ 3.8
+- cyclonedds == 0.10.2 (compiled & installed)
+- Linux (for `evdev` keyboard listener; optional)
+- Microphone access
+
+### 2. Install
+```bash
+# Clone this fork
+git clone https://github.com/YOUR_USERNAME/unitree-go2-voice-control.git
+cd unitree-go2-voice-control
+
+# Install base SDK
+pip3 install -e .
+
+# Install voice control dependencies
+pip3 install -r voice_control/requirements.txt
+```
+
+### 3. Configure
+Create a `.env` file in the repo root:
+```bash
+# Network
+GO2_NETWORK_INTERFACE=enp2s0          # DDS interface (leave empty for default)
+GO2_SERVER_HOST=0.0.0.0
+GO2_SERVER_PORT=8000
+
+# Auth (recommended for shared networks)
+GO2_AUTH_USERNAME=admin
+GO2_AUTH_PASSWORD=your_secure_password
+GO2_SESSION_SECRET=change_me_in_production
+
+# Whisper / Speech-to-Text
+GO2_WHISPER_MODEL=tiny                # tiny / base / small / medium / large
+GO2_WHISPER_DEVICE=cpu                # cpu or cuda
+GO2_WHISPER_COMPUTE_TYPE=float32      # float32 / float16 / int8
+
+# Audio
+GO2_AUDIO_SAMPLE_RATE=16000
+GO2_AUDIO_CHANNELS=1
+GO2_KEYBIND_KEY=KEY_SPACE             # Keyboard key to trigger recording
+
+# Robot
+GO2_ROBOT_TIMEOUT=10.0
+
+# Testing without a real robot
+GO2_MOCK_MODE=false
+
+# TLS (optional)
+GO2_TLS_CERT=/path/to/cert.pem
+GO2_TLS_KEY=/path/to/key.pem
+```
+
+### 4. Run
+```bash
+python3 run.py
+```
+Open your browser at `http://localhost:8000` (or `https` if TLS is enabled).
+
+---
+
+## Supported Commands
+
+The parser recognizes natural language for the following motions:
+
+| Motion | Example Phrases |
+|--------|-----------------|
+| Stand Up | "stand up", "get up", "rise" |
+| Sit Down | "sit down", "sit", "take a seat" |
+| Stretch | "stretch", "reach out" |
+| Hello / Greet | "hello", "wave", "say hi" |
+| Heart | "love", "heart", "i love you" |
+| Dance 1 / Dance 2 | "dance", "do a dance", "dance two" |
+| Walk Forward | "walk forward", "go ahead", "move forward" |
+| Walk Backward | "walk backward", "step back", "go back" |
+| Turn Left / Right | "turn left", "spin right" |
+| Move Left / Right | "move left", "strafe right" |
+| Stop | "stop", "halt", "freeze" |
+| Balance Stand | "balance", "balance stand" |
+| Recovery Stand | "recovery", "get up" |
+| Squat | "squat", "crouch" |
+| Jump | "jump", "hop" |
+| Step | "step", "take a step" |
+| Skateboard | "skateboard" |
+| Fingertip Stand | "fingertip" |
+| One-legged Stand | "one leg", "one-legged" |
+| Handstand | "handstand" |
+| Damped | "damped", "limp" |
+| Stand Out | "stand out" |
+| Wiggle Hips | "wiggle", "wiggle hips" |
+
+---
+
+## Architecture
+
+```
+┌──────────────┐     WebSocket / HTTP      ┌──────────────┐     DDS      ┌────────┐
+│  Browser UI  │  ◄────────────────────►  │  FastAPI     │  ◄──────►  │  Go2   │
+│  (static/)   │   hold-to-speak / text    │  (server.py) │   SportClient│ Robot  │
+└──────────────┘                           └──────────────┘              └────────┘
+                                                  │
+                                            ┌─────┴─────┐
+                                            ▼           ▼
+                                     ┌──────────┐  ┌──────────┐
+                                     │  faster  │  │ command  │
+                                     │ whisper  │  │ parser   │
+                                     └──────────┘  └──────────┘
+```
+
+### Component Overview
+
+| File | Purpose |
+|------|---------|
+| `run.py` | Entry point — loads `.env` and starts Uvicorn |
+| `voice_control/server.py` | FastAPI app, auth middleware, WebSocket, REST endpoints |
+| `voice_control/speech.py` | `faster-whisper` wrapper for speech-to-text |
+| `voice_control/speech_mock.py` | Offline STT mock for testing without a model |
+| `voice_control/audio_recorder.py` | Microphone capture via `sounddevice` |
+| `voice_control/keyboard_listener.py` | Linux `evdev` listener for hardware key triggers |
+| `voice_control/command_parser.py` | Natural language → robot motion mapping |
+| `voice_control/robot_controller.py` | DDS `SportClient` wrapper with mock support |
+| `voice_control/config.py` | Environment-based configuration |
+| `voice_control/static/` | Frontend (HTML / CSS / JS) with glassmorphism design |
+
+---
+
+## Environment Variables Reference
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GO2_NETWORK_INTERFACE` | *(empty)* | DDS network interface name |
+| `GO2_SERVER_HOST` | `0.0.0.0` | Server bind address |
+| `GO2_SERVER_PORT` | `8000` | Server bind port |
+| `GO2_AUTH_USERNAME` | `admin` | Login username |
+| `GO2_AUTH_PASSWORD` | *(empty)* | Login password (empty = no auth) |
+| `GO2_SESSION_SECRET` | random | Session cookie signing key |
+| `GO2_SESSION_TTL` | `604800` | Session lifetime in seconds (7 days) |
+| `GO2_WHISPER_MODEL` | `tiny` | Whisper model size |
+| `GO2_WHISPER_DEVICE` | `cpu` | Inference device |
+| `GO2_WHISPER_COMPUTE_TYPE` | `float32` | Quantization type |
+| `GO2_AUDIO_SAMPLE_RATE` | `16000` | Recording sample rate |
+| `GO2_AUDIO_CHANNELS` | `1` | Recording channels |
+| `GO2_AUDIO_DTYPE` | `int16` | Recording bit depth |
+| `GO2_AUDIO_DEVICE` | *(empty)* | Specific audio device index |
+| `GO2_KEYBIND_KEY` | `KEY_SPACE` | Keyboard trigger key |
+| `GO2_ROBOT_TIMEOUT` | `10.0` | DDS client timeout |
+| `GO2_MOCK_MODE` | `false` | Run without real robot |
+| `GO2_TLS_CERT` | *(empty)* | Path to TLS certificate |
+| `GO2_TLS_KEY` | *(empty)* | Path to TLS private key |
+
+---
+
 ## Dependencies
-- Python >= 3.8
-- cyclonedds == 0.10.2
-- numpy
-- opencv-python
 
-### Installing from source
-Execute the following commands in the terminal:
-```bash
-cd ~
-sudo apt install python3-pip
-git clone https://github.com/unitreerobotics/unitree_sdk2_python.git
-cd unitree_sdk2_python
-pip3 install -e .
-```
-## FAQ
-##### 1. Error when `pip3 install -e .`:
-```bash
-Could not locate cyclonedds. Try to set CYCLONEDDS_HOME or CMAKE_PREFIX_PATH
-```
-This error mentions that the cyclonedds path could not be found. First compile and install cyclonedds:
+### Base SDK
+- `cyclonedds == 0.10.2`
+- `numpy`
+- `opencv-python`
 
-```bash
-cd ~
-git clone https://github.com/eclipse-cyclonedds/cyclonedds -b releases/0.10.x 
-cd cyclonedds && mkdir build install && cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=../install
-cmake --build . --target install
-```
-Enter the unitree_sdk2_python directory, set `CYCLONEDDS_HOME` to the path of the cyclonedds you just compiled, and then install unitree_sdk2_python.
-```bash
-cd ~/unitree_sdk2_python
-export CYCLONEDDS_HOME=~/cyclonedds/install
-pip3 install -e .
-```
-For details, see: https://pypi.org/project/cyclonedds/#installing-with-pre-built-binaries
+### Voice Control
+- `fastapi`
+- `uvicorn[standard]`
+- `python-multipart`
+- `faster-whisper`
+- `sounddevice`
+- `soundfile`
+- `evdev`
+- `python-dotenv`
 
-# Usage
-The Python sdk2 interface maintains consistency with the unitree_sdk2 interface, achieving robot status acquisition and control through request-response or topic subscription/publishing. Example programs are located in the `/example` directory. Before running the examples, configure the robot's network connection as per the instructions in the document at https://support.unitree.com/home/en/developer/Quick_start.
-## DDS Communication
-In the terminal, execute:
-```bash
-python3 ./example/helloworld/publisher.py
-```
-Open a new terminal and execute:
-```bash
-python3 ./example/helloworld/subscriber.py
-```
-You will see the data output in the terminal. The data structure transmitted between `publisher.py` and `subscriber.py` is defined in `user_data.py`, and users can define the required data structure as needed.
-## High-Level Status and Control
-The high-level interface maintains consistency with unitree_sdk2 in terms of data structure and control methods. For detailed information, refer to https://support.unitree.com/home/en/developer/sports_services.
-### High-Level Status
-Execute the following command in the terminal:
-```bash
-python3 ./example/high_level/read_highstate.py enp2s0
-```
-Replace `enp2s0` with the name of the network interface to which the robot is connected,.
-### High-Level Control
-Execute the following command in the terminal:
-```bash
-python3 ./example/high_level/sportmode_test.py enp2s0
-```
-Replace `enp2s0` with the name of the network interface to which the robot is connected. This example program provides several test methods, and you can choose the required tests as follows:
-```python
-test.StandUpDown() # Stand up and lie down
-# test.VelocityMove() # Velocity control
-# test.BalanceAttitude() # Attitude control
-# test.TrajectoryFollow() # Trajectory tracking
-# test.SpecialMotions() # Special motions
-```
-## Low-Level Status and Control
-The low-level interface maintains consistency with unitree_sdk2 in terms of data structure and control methods. For detailed information, refer to https://support.unitree.com/home/en/developer/Basic_services.
-### Low-Level Status
-Execute the following command in the terminal:
-```bash
-python3 ./example/low_level/lowlevel_control.py enp2s0
-```
-Replace `enp2s0` with the name of the network interface to which the robot is connected. The program will output the state of the right front leg hip joint, IMU, and battery voltage.
-### Low-Level Motor Control
-First, use the app to turn off the high-level motion service (sport_mode) to prevent conflicting instructions.
-Execute the following command in the terminal:
-```bash
-python3 ./example/low_level/lowlevel_control.py enp2s0
-```
-Replace `enp2s0` with the name of the network interface to which the robot is connected. The left hind leg hip joint will maintain a 0-degree position (for safety, set kp=10, kd=1), and the left hind leg calf joint will continuously output 1Nm of torque.
-## Wireless Controller Status
-Execute the following command in the terminal:
-```bash
-python3 ./example/wireless_controller/wireless_controller.py enp2s0
-```
-Replace `enp2s0` with the name of the network interface to which the robot is connected. The terminal will output the status of each key. For the definition and data structure of the remote control keys, refer to https://support.unitree.com/home/en/developer/Get_remote_control_status.
-## Front Camera
-Use OpenCV to obtain the front camera (ensure to run on a system with a graphical interface, and press ESC to exit the program):
-```bash
-python3 ./example/front_camera/camera_opencv.py enp2s0
-```
-Replace `enp2s0` with the name of the network interface to which the robot is connected.
+---
 
-## Obstacle Avoidance Switch
-```bash
-python3 ./example/obstacles_avoid_switch/obstacles_avoid_switch.py enp2s0
-```
-Replace `enp2s0` with the name of the network interface to which the robot is connected. The robot will cycle obstacle avoidance on and off. For details on the obstacle avoidance service, see https://support.unitree.com/home/en/developer/ObstaclesAvoidClient
+## License
 
-## Light and volume control
-```bash
-python3 ./example/vui_client/vui_client_example.py enp2s0
-```
-Replace `enp2s0` with the name of the network interface to which the robot is connected.T he robot will cycle the volume and light brightness. The interface is detailed at https://support.unitree.com/home/en/developer/VuiClient
+This fork retains the original license of [`unitree_sdk2_python`](https://github.com/unitreerobotics/unitree_sdk2_python). Voice control additions are provided under the same terms.
